@@ -1,0 +1,62 @@
+We are looking for a Senior Director, Solutions Architecture who will be directing TradeStation’s Brokerage Services division in building a next-generation Order Management System (OMS) and risk platform in partnership with a strategic vendor. This critical multi-phase initiative replaces legacy C++/C# systems with a modern, scalable Java-based platform). We seek a Sr. Java Solution Architect to provide technical leadership over design and delivery, working in close partnership with vendor to ensure code quality, architectural soundness, performance, maintainability, and security. This Architect will be working with the following technology stack:
+
+Backend Core: Java (with microservice and monolith)
+Messaging / Streaming: Apache Kafka
+Database: PostgreSQL (primary transactional/data warehouse), Redis (cache, message queuing)
+APIs & Integrations: gRPC APIs (B2B), REST APIs/ industry standard protocols (including FIX for order routing), proprietary WebSocket layers
+Cloud & Deployment: Kubernetes, Docker, AWS cloud infrastructure (container orchestration, telemetry, S3 for historical data/cache)
+Build & CI/CD: TeamCity, GitLab, Jenkins; Docker for packaging
+Monitoring & Observability: Prometheus, Grafana, OpenSearch, Zabbix
+Security: Role-based access controls, OAuth2/JWT for APIs, audit trail persistence, vulnerability scanning (SonarQube, Black Duck), penetration testing
+Other: JVM profiling, server-side risk engines (custom, spans Black-Scholes, SPAN/strategy-based margining)
+
+
+What You’ll Be Doing: 
+
+Architecture & Solution Design
+Drive and validate overall architectural vision for the new OMS and supporting risk and account systems
+Ensure solutions are cloud-native, horizontally scalable, extensible, and designed for high availability
+Lead technical due diligence and code reviews on vendor partners’ Java deliverables 
+Define best practices for API design, integration logic, and secure coding
+Architect reusable interfaces for integrating AI tools into SDLC workflows (e.g., code review automation, performance modeling)
+ 
+
+Code Quality & SDLC Excellence
+Set standards for Java and backend code quality, including performance, maintainability, and test coverage, and apply AI/ML techniques
+Champion automation in build (CI/CD pipelines), code review, and regression testing
+Guide adoption of observability, traceability, and “shift-left” testing practices in the SDLC lifecycle
+Oversee vulnerability management, secure coding, and compliance with financial industry regulations
+Apply AI/ML techniques to reduce manual effort in design validation, test coverage analysis, and defect prediction
+Evaluate and integrate AI tools into CI/CD pipelines and developer workflows
+ 
+
+Collaboration & Cross-Team Alignment
+Act as technical SME/advisor for integration with TradeStation’s frontend platforms, market data feeds, and regulatory systems
+Translate complex business requirements, NFRs (non-functional requirements), and operational constraints into actionable architecture and design patterns
+Mentor embedded engineering team members and foster knowledge transfer between TradeStation and vendor teams to build long-term internal talent
+ 
+
+Operationalization & Support Readiness
+Define standards and templates for deployment, monitoring, and incident response
+Proactively identify architectural risks (i.e., data consistency, performance bottlenecks, scalability limits, “black box” vendor exposures)
+Ensure system meets regulatory and client SLAs (99.99% uptime, incident-free trading, high-throughput, and low-latency for market hours)
+Build playbooks for production cutover, fallback, vendor support handoff, and disaster recovery
+ 
+
+AI Integration & Strategy
+Collaborate with product and engineering teams to identify opportunities for AI-driven enhancements across the new OMS platform, including predictive risk analytics, intelligent order routing, anomaly detection, and operational automation
+Architect scalable interfaces for integrating ML models and AI services into real-time trading workflows, ensuring performance, security, and regulatory compliance
+Champion responsible AI practices and help define the roadmap for leveraging AI in future asset class expansion and client-facing capabilities
+The Skills You Bring:
+
+Hands-on track record as a solution architect overseeing large-scale cloud deployments (AWS preferred), microservices, stateful event-driven architectures, and real-time data pipelines
+Deep knowledge of Java performance optimization (GC tuning, thread/async management, JVM diagnostics)
+Extensive experience with relational and distributed (Postgres, Redis, Kafka) database design and tuning
+Strong background in API (REST/gRPC/FIX) design, security best practices, and observability (Prometheus, Grafana, ELK/OpenSearch)
+Proven leadership in code reviews, setting coding/architecture standards, and driving test automation
+Familiarity with margin/risk models, order workflow, and post-trade processing for brokers is a strong asset
+Experience working with third-party vendors (ideally co-dev or embedded models) in a regulated context
+Exposure to Kubernetes multi-region architecture, hybrid deployment (cloud/on-prem) preferred
+Involvement in open-source contributions, especially in cloud, market data, or risk analytics preferred
+Experience applying AI/ML techniques to backend systems for risk modeling, anomaly detection, or operational efficiency preferred
+Knowledge regulatory and compliance frameworks for financial transaction systems preferred

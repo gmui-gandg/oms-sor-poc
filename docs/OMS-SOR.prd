@@ -1,0 +1,167 @@
+Product Requirements Document (PRD): OMS + SOR Platform — Proof of Concept (POC)
+
+Document purpose
+- Provide a concise Product Requirements Document for a Proof of-Concept (POC) implementation of an Equity Order Management System (OMS) combined with Smart Order Routing (SOR).
+- The POC demonstrates the architecture and technology stack described in `TradeStation-Architect-Position.txt` and validates key functional flows, non-functional requirements, integration patterns, and operational controls.
+
+Scope
+- In scope (POC):
+  - Core OMS order lifecycle (receive, validate, route, amend, cancel, fill reporting) for equities.
+  - A pluggable SOR engine that selects destinations using price/latency/availability heuristics and deterministic routing rules.
+  - Integration adapters for market data (simulated feeds), execution destinations (FIX gateways - simulated/broker-sandbox), and internal risk checks.
+  - Event-driven architecture using Kafka for order events and state transitions.
+  - Persistence in PostgreSQL, short-lived state/cache in Redis, and service-to-service APIs via gRPC/REST and WebSocket for client notifications.
+  - Kubernetes-based deployment (Docker images) on AWS for container orchestration and observability via Prometheus/Grafana/OpenSearch.
+- Out of scope (POC):
+  - Full production-grade broker integrations, regulatory reporting pipelines, or complete multi-asset support beyond equities.
+  - Long-running vendor onboarding beyond co-development interactions and code-review checkpoints.
+
+Goals & Success Criteria
+- Primary goals:
+  - Prove the selected architecture (Java microservices + Kafka + Postgres + Redis + Kubernetes) can support OMS+SOR flows with low latency and fault-tolerant behavior.
+  - Demonstrate SOR decision-making including price/latency/fill probability heuristics and fallbacks.
+  - Validate observability, resilience, and security controls for a regulated trading environment.
+- Success criteria (POC acceptance):
+  - End-to-end order flow demonstrating creation → routing → execution simulation → fills for a minimum sustained throughput of 1,000 orders/sec with 99th percentile end-to-end latency < 250ms in POC environment (benchmarked).
+  - Reliable message delivery semantics for order events: exactly-once processing at the business level (idempotent handlers / deduplication) or documented trade-offs.
+  - SOR demonstrates measurable improvement over baseline naive routing in test scenarios (e.g., better fill rate, lower latency, or higher expected executed quantity).
+  - Security: APIs protected via OAuth2/JWT; access controls and an audit trail for order actions present in the POC.
+
+Stakeholders
+- Product Owner: (assign)
+- Engineering Lead / Solution Architect: (align with role described in `TradeStation-Architect-Position.txt`)
+- Platform / SRE: (observability, CI/CD)
+- Vendor partner engineering leads
+- Compliance & Security representative
+- QA / Test Automation
+
+Functional Requirements
+1) Order Lifecycle
+  - FR-01: Ingest orders via REST/gRPC and proprietary WebSocket client channels.
+  - FR-02: Persist incoming order requests to a durable Kafka topic and to Postgres for canonical state.
+  - FR-03: Implement synchronous validation (schema, account, balance, simple pre-trade risk) and asynchronous checks (portfolio-level risk) before routing.
+  - FR-04: Support common equity order types: Market, Limit, IOC, FOK, Stop, Stop-Limit, Pegged (POC subset configurable).
+  - FR-05: Support order lifecycle operations: New, Replace, Cancel, Suspend/Resume, and Execution/Fills reporting.
+
+2) Smart Order Routing (SOR)
+  - FR-10: Pluggable SOR engine that consumes order events and market data and outputs routing instructions.
+  - FR-11: Routing decision inputs: NBBO / simulated order book, destination latency, historical fill probability, risk constraints, fee structure, user preferences (e.g., venues to avoid).
+  - FR-12: Support routing strategies: single-destination, split across multiple venues, and staged routing with fallback rules.
+  - FR-13: Maintain route audit log for every decision with inputs and weights saved for explainability.
+
+3) Risk & Compliance
+  - FR-20: Pre-trade risk checks (account status, buying power, limit checks) must run synchronously prior to routing.
+  - FR-21: Real-time post-trade checks and ledger updates persisted to Postgres; alarms/alerts to SRE on breaches.
+  - FR-22: Audit trail for order changes and execution events persisted for compliance.
+
+4) Integrations
+  - FR-30: FIX adapter for outbound order routing (simulated broker FIX gateway for POC).
+  - FR-31: Market data adapter (simulated feed or replay of historical data) publishing to Kafka topics.
+  - FR-32: gRPC APIs for B2B integrations and REST for UI/third-party clients.
+
+Non-Functional Requirements (NFRs)
+- Performance
+  - NFR-01: Baseline POC throughput target: 1,000 orders/sec (configurable load tests).
+  - NFR-02: 99th percentile end-to-end latency < 250ms for order acknowledgment + routing decision.
+- Availability & Resilience
+  - NFR-10: Service design should tolerate instance failures; POC demonstrates horizontal scaling on Kubernetes.
+  - NFR-11: Kafka topics configured with replication factor >= 2 in POC clusters; Postgres with a primary + read-replicas for reporting.
+- Consistency & Durability
+  - NFR-20: Durable event storage via Kafka; write-ahead canonical state in Postgres so recovery is possible from event streams.
+- Security
+  - NFR-30: All APIs use OAuth2/JWT; RBAC for internal endpoints; secrets stored and rotated by cloud secret manager.
+  - NFR-31: Implement SonarQube scanning in CI, and SCA (Black Duck) for third-party dependencies.
+- Observability
+  - NFR-40: Metrics (Prometheus), dashboards (Grafana), distributed tracing integrated, and centralized logs (OpenSearch).
+
+Architecture & Component Design (POC-level)
+- High-level components
+  - Ingress Layer: API Gateway / Envoy for REST/gRPC and WebSocket client connections.
+  - OMS Core Service(s): Java-based microservices implementing order validation, state machine, and persistence orchestration.
+  - SOR Service: Java service implementing routing strategies; exposes configuration API and route audit logs.
+  - Execution Adapter(s): FIX gateway adapter (simulated) and other destination adapters.
+  - Market Data Adapter: Simulated feed publisher to Kafka topics; may replay historical L2 book data.
+  - Event Bus: Apache Kafka for decoupling order ingest, SOR decisions, fills, and downstream processing.
+  - State Store: PostgreSQL for canonical order state and audit; Redis for ephemeral caches and deduplication/state locks.
+  - Observability & Security stack: Prometheus, Grafana, OpenSearch, Zabbix, OAuth2 provider.
+
+- Data Flow (simplified)
+  1. Client submits order to API Gateway (REST/gRPC/WebSocket).
+  2. API gateway forwards to OMS Ingest service which performs syntactic validation and writes OrderCreated event to Kafka.
+  3. OMS Core consumes OrderCreated, performs pre-trade risk checks (sync or via risk service), persists canonical state to Postgres, and emits OrderValidated.
+  4. SOR service consumes OrderValidated and MarketData topics, computes route(s), emits RoutingInstruction events.
+  5. Execution Adapters consume RoutingInstruction and submit to destination (FIX or simulated gateway); execution reports produce Fill events.
+  6. OMS Core consumes Fill events, updates canonical state, notifies client via WebSocket, and emits Audit/Reporting events.
+
+Technology Mapping (from architect brief)
+- Backend: Java (Spring Boot / Micronaut or similar), microservices approach; monolith allowed for POC if necessary.
+- Messaging: Apache Kafka for event streaming and decoupling.
+- Database: PostgreSQL (transactional, archival), Redis (cache, locks, short-lived state).
+- APIs: gRPC (B2B), REST (client/UI), FIX (execution), WebSocket (client notifications).
+- Cloud & Deployment: Docker, Kubernetes on AWS; S3 for historical datasets and durable artifacts.
+- CI/CD: TeamCity/GitLab/Jenkins pipelines to build, test, scan, and deploy container images.
+- Observability: Prometheus, Grafana, OpenSearch, Zabbix, JVM profiling tools.
+- Security: OAuth2/JWT, RBAC, SonarQube, Black Duck, penetration testing playbook.
+
+POC Implementation Plan & Milestones (8–12 weeks suggested)
+- Week 0: Kickoff, architecture review, define POC success metrics, test harness design.
+- Week 1–2: Basic scaffolding — API gateway, OMS ingest service, Kafka topics, Postgres schema, CI pipeline, basic observability.
+- Week 3–4: Implement OMS core state machine, persistence, basic risk checks, simple WebSocket client notifications.
+- Week 5: Implement SOR engine prototype with configurable heuristics and route audit logging.
+- Week 6: Build execution adapters (simulated FIX gateway), market data simulator, end-to-end wiring.
+- Week 7: Performance and resilience testing (load tests, failure injection), security scanning.
+- Week 8: Finalize POC demo, produce runbook, lessons learned, and recommendations for productionization.
+
+POC Deliverables
+- Working POC codebase and Docker images for core services.
+- Deployment manifests for Kubernetes (Helm charts or k8s manifests).
+- Test harness and load scripts (traffic generator, market data replayer).
+- Observability dashboards and alerting rules for key SLOs.
+- Security and compliance checklist and initial audit artifacts.
+- Demo plan and recorded run demonstrating acceptance criteria.
+
+Acceptance Criteria (detailed)
+- Functional
+  - E2E flow: New order → validated → routed → executed (simulated) → fills processed and client notified.
+  - Correct enforcement of pre-trade risk checks and audit logging.
+  - SOR audit logs with input features saved and accessible for 30 days for analysis.
+- Non-functional
+  - Load test demonstrates target throughput and latency within POC environment.
+  - System recovers from single-instance failure with no message loss per documented configuration.
+  - All services report metrics and traces; dashboards exist for key flows.
+- Security
+  - CI scans passing or documented mitigations for critical findings; OAuth2/JWT enabled for APIs.
+
+Risks & Mitigations
+- Risk: Vendor code quality varies; potential “black box” logic.
+  - Mitigation: Strict code review gates, pair-programming on critical modules, coding standards, and test coverage requirements.
+- Risk: Exact-once semantics are hard to guarantee across distributed systems.
+  - Mitigation: Implement idempotent handlers, deduplication in Redis, or use transactional outbox patterns with Kafka.
+- Risk: POC performance may not reflect production scale.
+  - Mitigation: Use representative load patterns, realistic market data replay, and stress tests; document scaling considerations.
+- Risk: Regulatory/compliance constraints.
+  - Mitigation: Engage Compliance early; ensure audit trail and retention policies are implemented in POC.
+
+Open Questions / Decisions Needed
+- Which Java framework (Spring Boot vs Micronaut) to standardize on for microservices?
+- Confirm acceptable POC latency & throughput targets and the environment (single-region AWS vs local cluster).
+- Decide whether SOR logic will be rule-based only for POC, or include ML-based routing heuristics (ML adds complexity and explainability requirements).
+- Vendor involvement: co-development vs delivery of adapters — determine scope and code ownership.
+
+Appendix: Minimal Postgres Schemas & Kafka Topics (POC suggestions)
+- Postgres tables (examples): orders (order_id PK, client_id, status, created_at, last_updated), order_events (event_id, order_id, event_type, payload, timestamp), fills (fill_id, order_id, executed_qty, price, venue, timestamp), route_audit (route_id, order_id, route_payload, reason_weights, timestamp)
+- Kafka topics (examples): orders.inbound, orders.validated, orders.routing, orders.execution, marketdata.l1, marketdata.l2, alerts.risks, audit.routes
+
+Appendix: Quick POC run instructions (dev)
+1) Build Java services via existing CI or locally with Maven/Gradle.
+2) Start local Kubernetes (or use a dev cluster) and apply manifests.
+3) Start Kafka (or use a managed cluster), Postgres, and Redis.
+4) Start market data simulator and traffic generator to drive load.
+5) Watch Grafana dashboards and logs in OpenSearch to validate flows.
+
+References
+- `docs/TradeStation-Architect-Position.txt` — architecture and tech stack guidance.
+
+Next steps/options
+- Prepare a short technical spike to implement the OMS ingest + one SOR strategy and run a baseline load test.
+- Prepare a vendor onboarding checklist and code-review rubric aligned to the architect role responsibilities.

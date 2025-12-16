@@ -1,0 +1,47 @@
+%% Mermaid architecture diagram for OMS + SOR POC
+flowchart LR
+  subgraph Clients
+    A[Trading UIs / B2B Clients]
+  end
+
+  A -->|REST/gRPC/WS/JWT| GW[API Gateway / Envoy]
+  GW --> OMSI[OMS Ingest Service]
+  GW --> AUTH[OAuth2 Provider]
+
+  OMSI -->|produce to orders.inbound| KAFKA((Kafka Cluster))
+  MD[Market Data Simulator] -->|produce to marketdata.l1, marketdata.l2| KAFKA
+
+  KAFKA -->|consume orders.inbound| OMSC[OMS Core / State Machine]
+  KAFKA -->|consume orders.validated, marketdata.*| SOR[SOR Service]
+
+  SOR -->|emit orders.routing| EXEC[Execution Adapter - FIX/Simulator]
+  EXEC -->|emit orders.execution / orders.fills| KAFKA
+
+  OMSC -->|persist canonical state| PG[(Postgres)]
+  SOR -->|persist route_audit| PG
+  OMSC -->|cache/dedup/locks| REDIS[(Redis)]
+
+  subgraph Observability
+    PROM[Prometheus]
+    GRAF[Grafana]
+    TRC[Jaeger]
+    LOG[OpenSearch]
+  end
+
+  %% Metric annotations (examples)
+  OMSI ---|metrics: oms_ingest_requests_total, oms_ingest_latency_seconds| PROM
+  OMSC ---|metrics: orders_processed_total, order_end_to_end_latency_ms_p99| PROM
+  SOR ---|metrics: sor_decisions_total, sor_decision_latency_seconds| PROM
+  EXEC ---|metrics: exec_submissions_total, exec_roundtrip_latency_ms| PROM
+  KAFKA ---|logs, topic indexing| LOG
+
+  %% Kafka topics summary (legend)
+  subgraph Topics[Kafka Topics]
+    T1[orders.inbound]
+    T2[orders.validated]
+    T3[orders.routing]
+    T4[orders.execution / orders.fills]
+    T5[marketdata.l1 / marketdata.l2]
+  end
+
+  KAFKA --- Topics

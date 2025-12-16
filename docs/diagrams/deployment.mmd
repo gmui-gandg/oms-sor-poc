@@ -1,0 +1,49 @@
+%% Mermaid deployment diagram for POC (Kubernetes namespaces)
+flowchart TB
+  subgraph Cluster[EKS / dev k8s cluster]
+    subgraph infra[infra namespace]
+      KAFKA(Kafka Cluster - topics: orders.*, marketdata.*, audit.*)
+      PG[(Postgres)]
+      REDIS[(Redis)]
+      OAUTH[Keycloak]
+      SCHEMA[Schema Registry]
+    end
+
+    subgraph oms[oms namespace]
+      GW[API Gateway / Envoy]
+      IN[oms-ingest Deployment]
+      CORE[oms-core Deployment]
+      SOR[SOR Deployment]
+      EXEC[execution-adapter Deployment]
+      MD[marketdata-simulator Deployment]
+    end
+
+    subgraph observability[monitoring]
+      PROM[Prometheus]
+      GRAF[Grafana]
+      JAEG[Jaeger]
+      LOG[OpenSearch]
+    end
+  end
+
+  Clients --> GW
+  GW --> IN
+  IN -->|produce `orders.inbound`| KAFKA
+  CORE -->|query/persist| PG
+  CORE -->|cache/dedup| REDIS
+  SOR -->|produce `orders.routing`| KAFKA
+  EXEC -->|produce `orders.execution`| KAFKA
+  MD -->|produce `marketdata.l1` / `marketdata.l2`| KAFKA
+
+  PROM -->|scrape metrics| IN
+  PROM -->|scrape metrics| CORE
+  PROM -->|scrape metrics| SOR
+  PROM -->|scrape metrics| EXEC
+  JAEG -->|trace collection| IN
+  LOG -->|ingest logs| KAFKA
+
+  %% Example Prometheus metrics of interest
+  classDef metrics fill:#f9f,stroke:#333,stroke-width:1px;
+  metricsNote["Example metrics:\n- oms_ingest_requests_total\n- orders_processed_total\n- order_end_to_end_latency_ms_p99\n- sor_decisions_total\n- kafka_consumer_lag"]
+  metricsNote:::metrics
+  PROM --- metricsNote

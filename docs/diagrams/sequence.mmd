@@ -1,0 +1,40 @@
+%% Mermaid sequence diagram for order flow (POC)
+sequenceDiagram
+  participant Client as Trading UI / B2B Client
+  participant API as API Gateway
+  participant Ingest as OMS Ingest
+  participant Kafka as Kafka (topics)
+  participant OMS as OMS Core
+  participant SOR as SOR Service
+  participant Exec as Execution Adapter
+  participant DB as Postgres
+  participant Redis as Redis
+  participant Prom as Prometheus
+
+  Client->>API: NewOrder (REST/gRPC)
+  API->>Ingest: forward NewOrder
+  Ingest->>Redis: check idempotency (key: client_order_id)
+  Ingest->>Kafka: produce orders.inbound {order_id, payload}
+  Ingest->>Prom: push metrics oms_ingest_requests_total, oms_ingest_latency_seconds
+  Ingest-->>Client: 202 Accepted (order_id)
+
+  Kafka->>OMS: consume orders.inbound
+  OMS->>DB: persist order (transaction)
+  OMS->>Kafka: produce orders.validated
+  OMS->>Prom: orders_processed_total, order_end_to_end_latency_ms_p99
+
+  Kafka->>SOR: consume orders.validated + marketdata.*
+  SOR->>DB: persist route_audit
+  SOR->>Kafka: produce orders.routing
+  SOR->>Prom: sor_decisions_total, sor_decision_latency_seconds
+
+  Kafka->>Exec: consume orders.routing
+  Exec->>Broker: send FIX NewOrderSingle (simulated)
+  Broker->>Exec: ExecutionReport / Fill
+  Exec->>Kafka: produce orders.execution / orders.fills
+  Exec->>Prom: exec_submissions_total, exec_roundtrip_latency_ms
+
+  Kafka->>OMS: consume orders.execution / orders.fills
+  OMS->>DB: update order state, write order_events / fills
+  OMS->>Prom: update relevant metrics
+  OMS-->>Client: WebSocket notification / status update
