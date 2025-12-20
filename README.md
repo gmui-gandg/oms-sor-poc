@@ -6,7 +6,7 @@ A proof-of-concept implementation of an institutional-grade Order Management Sys
 
 This POC implements an event-driven microservices architecture using:
 
-- **Spring Boot 3.2** with Java 21 Virtual Threads (Project Loom)
+-- **Spring Boot 4.0.1 (Spring Framework 7.x)** with Java 21 Virtual Threads (Project Loom)
 - **Apache Kafka** for asynchronous event streaming
 - **gRPC** for low-latency synchronous service communication
 - **PostgreSQL** for transactional persistence
@@ -52,6 +52,12 @@ Client → API Gateway (REST/WebSocket)
                    ↓
               OMS Core (fills processing)
 ```
+
+### Notable changes in this branch
+- **Framework upgrade**: Spring Boot upgraded to **4.0.1** (uses Spring Framework 7.x).
+- **Java**: project targets **Java 21**.
+- **IDs**: application and DB use time-ordered UUIDv7 for identifiers (UUID-creator library).
+- **Database migrations**: consolidated fresh-schema migration `V1__initial_schema.sql` creates tables using `uuid` columns (no incremental migration required for new databases).
 
 ## 📋 Prerequisites
 
@@ -225,7 +231,7 @@ mvn spring-boot:build-image
 
 Flyway migrations are located in `services/oms-ingest/src/main/resources/db/migration/`.
 
-Migrations run automatically on application startup.
+Migrations run automatically on application startup. For fresh databases this project provides a consolidated `V1__initial_schema.sql` that uses `uuid` columns for primary and aggregate IDs.
 
 ### Kafka Topics
 
