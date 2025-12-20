@@ -1,0 +1,112 @@
+syntax = "proto3";
+
+package oms.order;
+
+option java_multiple_files = true;
+option java_package = "com.oms.proto.order";
+option java_outer_classname = "OrderProto";
+
+// Order service for submission and queries
+service OrderService {
+  rpc PlaceOrder(PlaceOrderRequest) returns (PlaceOrderResponse);
+  rpc GetOrder(GetOrderRequest) returns (Order);
+  rpc CancelOrder(CancelOrderRequest) returns (CancelOrderResponse);
+}
+
+// Place order request
+message PlaceOrderRequest {
+  string client_order_id = 1;
+  string account_id = 2;
+  string symbol = 3;
+  OrderSide side = 4;
+  OrderType order_type = 5;
+  double quantity = 6;
+  optional double limit_price = 7;
+  optional double stop_price = 8;
+  TimeInForce time_in_force = 9;
+}
+
+// Place order response
+message PlaceOrderResponse {
+  string order_id = 1;
+  string client_order_id = 2;
+  OrderStatus status = 3;
+  string message = 4;
+  int64 timestamp_ms = 5;
+}
+
+// Get order request
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+// Cancel order request
+message CancelOrderRequest {
+  string order_id = 1;
+  string reason = 2;
+}
+
+// Cancel order response
+message CancelOrderResponse {
+  string order_id = 1;
+  bool success = 2;
+  string message = 3;
+}
+
+// Order message
+message Order {
+  string order_id = 1;
+  string client_order_id = 2;
+  string account_id = 3;
+  string symbol = 4;
+  OrderSide side = 5;
+  OrderType order_type = 6;
+  double quantity = 7;
+  double filled_quantity = 8;
+  optional double limit_price = 9;
+  optional double stop_price = 10;
+  TimeInForce time_in_force = 11;
+  OrderStatus status = 12;
+  int64 created_at_ms = 13;
+  int64 updated_at_ms = 14;
+}
+
+// Order side enum
+enum OrderSide {
+  ORDER_SIDE_UNSPECIFIED = 0;
+  BUY = 1;
+  SELL = 2;
+}
+
+// Order type enum
+enum OrderType {
+  ORDER_TYPE_UNSPECIFIED = 0;
+  MARKET = 1;
+  LIMIT = 2;
+  STOP = 3;
+  STOP_LIMIT = 4;
+}
+
+// Time in force enum
+enum TimeInForce {
+  TIME_IN_FORCE_UNSPECIFIED = 0;
+  DAY = 1;
+  GTC = 2;  // Good Till Cancel
+  IOC = 3;  // Immediate Or Cancel
+  FOK = 4;  // Fill Or Kill
+}
+
+// Order status enum
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  NEW = 1;
+  PENDING_VALIDATION = 2;
+  VALIDATED = 3;
+  REJECTED = 4;
+  ROUTING = 5;
+  ROUTED = 6;
+  PARTIALLY_FILLED = 7;
+  FILLED = 8;
+  CANCELED = 9;
+  EXPIRED = 10;
+}

@@ -1,0 +1,90 @@
+spring:
+  application:
+    name: oms-ingest
+  
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:oms}
+    username: ${POSTGRES_USER:oms_user}
+    password: ${POSTGRES_PASSWORD:changeme}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+  
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        jdbc:
+          time_zone: UTC
+    show-sql: false
+  
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+  
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      enable-idempotence: true
+      properties:
+        linger.ms: 10
+        max.in.flight.requests.per.connection: 5
+  
+  threads:
+    virtual:
+      enabled: true  # Enable Java 21 Virtual Threads
+
+# gRPC Configuration
+grpc:
+  server:
+    port: ${GRPC_PORT:9090}
+    
+# REST API Configuration
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+
+# Actuator / Observability
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLE_RATE:1.0}
+
+# Application-specific configuration
+oms:
+  ingest:
+    outbox-publisher:
+      enabled: true
+      batch-size: 100
+      poll-interval-ms: 50
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.oms: DEBUG
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

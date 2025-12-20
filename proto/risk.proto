@@ -1,0 +1,54 @@
+syntax = "proto3";
+
+package oms.risk;
+
+option java_multiple_files = true;
+option java_package = "com.oms.proto.risk";
+option java_outer_classname = "RiskProto";
+
+// Risk service for pre-trade checks
+service RiskService {
+  rpc CheckRisk(RiskCheckRequest) returns (RiskCheckResponse);
+  rpc GetPosition(GetPositionRequest) returns (Position);
+}
+
+// Risk check request
+message RiskCheckRequest {
+  string account_id = 1;
+  string symbol = 2;
+  string side = 3;  // BUY or SELL
+  double quantity = 4;
+  double estimated_price = 5;
+  string order_type = 6;
+}
+
+// Risk check response
+message RiskCheckResponse {
+  bool approved = 1;
+  string message = 2;
+  repeated RiskViolation violations = 3;
+}
+
+// Risk violation
+message RiskViolation {
+  string rule = 1;
+  string description = 2;
+  string severity = 3;  // INFO, WARNING, ERROR
+}
+
+// Get position request
+message GetPositionRequest {
+  string account_id = 1;
+  optional string symbol = 2;
+}
+
+// Position message
+message Position {
+  string account_id = 1;
+  string symbol = 2;
+  double quantity = 3;
+  double average_cost = 4;
+  double market_value = 5;
+  double unrealized_pnl = 6;
+  int64 updated_at_ms = 7;
+}

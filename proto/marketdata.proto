@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package oms.marketdata;
+
+option java_multiple_files = true;
+option java_package = "com.oms.proto.marketdata";
+option java_outer_classname = "MarketDataProto";
+
+// Market data service for quotes
+service MarketDataService {
+  rpc GetQuote(GetQuoteRequest) returns (Quote);
+  rpc SubscribeQuotes(SubscribeQuotesRequest) returns (stream Quote);
+}
+
+// Get quote request
+message GetQuoteRequest {
+  string symbol = 1;
+}
+
+// Subscribe to quotes request
+message SubscribeQuotesRequest {
+  repeated string symbols = 1;
+}
+
+// Quote message (NBBO - National Best Bid/Offer)
+message Quote {
+  string symbol = 1;
+  double bid_price = 2;
+  double bid_size = 3;
+  double ask_price = 4;
+  double ask_size = 5;
+  double last_price = 6;
+  double last_size = 7;
+  int64 timestamp_ms = 8;
+  string venue = 9;  // Exchange/venue name
+}

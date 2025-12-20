@@ -6,7 +6,8 @@ Overview
 - Audience: Solution Architects, Java backend engineers, SRE/Platform, Security & Compliance, and vendor partners.
 
 Chosen Tech Stack (POC)
-- Language & Framework: Java on the JVM. Recommended framework: **Spring Boot** (rich ecosystem for Kafka, metrics, gRPC, security). Micronaut may be used if lower memory footprint is required.
+- Language & Framework: Java on the JVM. Recommended framework: **Spring Boot 4.x** (rich ecosystem for Kafka, metrics, gRPC, security). Micronaut may be used if lower memory footprint is required.
+  - **Java 21+ with Virtual Threads (Project Loom)** — improves throughput and simplifies async I/O handling; Spring Boot 4.x natively supports virtual threads for scalable, low-latency services.
 - Messaging / Streaming: **Apache Kafka** (use Avro + Schema Registry for production; JSON acceptable for POC).
 - Database: **PostgreSQL** as canonical transactional store; **Redis** (Lettuce client) for ephemeral caches, deduplication, and distributed locks.
 - APIs & Protocols: **gRPC** for B2B service-to-service APIs, **REST** for UI and admin, **FIX 4.4** for execution adapters, and **WebSocket** for client notifications.
@@ -16,6 +17,27 @@ Chosen Tech Stack (POC)
 - Observability: **Micrometer + OpenTelemetry** → **Prometheus** (metrics) + **Grafana** (dashboards) + **Jaeger** (tracing); logs to **OpenSearch**.
 - Security & QA: **OAuth2/JWT** (Keycloak recommended for POC), **RBAC**, **SonarQube** for static analysis, **Black Duck** for SCA.
 - Local/dev tooling: **Testcontainers** for integration tests, **Strimzi** for Kafka on k8s (or a managed Kafka). Use `kafka-console-producer/consumer` for quick tests.
+
+Latency & Performance Considerations (2025 context)
+- **Target latency for this POC**: 99th percentile <250ms end-to-end (order ingest → routing decision) — well-suited for Java/Spring Boot microservices.
+- **When Java + Spring Boot is appropriate**:
+  - Mid-tier latency requirements (100ms - 1s) typical for retail/institutional brokerage OMS.
+  - Complex business logic (validation, risk checks, compliance, audit) where strong typing and mature tooling provide significant value.
+  - Event-driven orchestration via Kafka for decoupled order flow and downstream processing.
+- **When to consider polyglot/hybrid architecture** (future optimization beyond POC):
+  - **Ultra-low latency requirements (<10ms, <1ms)** — Use **Rust, C++, or Go** for hot-path components:
+    - Execution adapters and FIX gateways (sub-millisecond order submission).
+    - Market data ingestion and tick processing (high-frequency data streams).
+  - **High-frequency trading (HFT)** — C++/Rust/FPGA for critical path; Java for risk aggregation, reporting, and control plane.
+  - **ML-driven SOR heuristics** — Python services (with gRPC or Kafka integration) for predictive routing models.
+- **Java performance optimizations available in 2025**:
+  - **Virtual Threads (Java 21+)** — dramatically improves I/O-bound throughput without reactive complexity.
+  - **GraalVM Native Image** — compile Spring Boot to native binary for <100ms startup and lower memory footprint (useful for serverless or edge deployments).
+  - **JVM tuning** — GC tuning (ZGC, Shenandoah for low-pause), JIT compiler optimizations, and profiling (JFR, async-profiler).
+- **Industry precedent (2025)**:
+  - Tier-1 broker OMS platforms (Bloomberg AIM, Fidessa, ION) remain predominantly Java-based with selective C++ for execution engines.
+  - Cloud-native brokerages (Robinhood, newer fintechs) use polyglot microservices: Java (business logic), Go/Rust (gateways), Python (ML).
+  - This POC design is **industry-standard for retail/active trader brokerage OMS+SOR** and aligns with 2025 best practices.
 
 ASCII Architecture Diagram (high-level)
 Clients
@@ -296,6 +318,43 @@ service Ingest { rpc NewOrder(NewOrderRequest) returns (NewOrderResponse); }
 - Implement lightweight `sor-service` with single-best routing and `route_audit` persistence.
 - Implement `execution-simulator` to accept RoutingInstruction and emit fills.
 
-References
-- `docs/OMS-SOR.prd`
-- `docs/TradeStation-Architect-Position.txt`
+References & Industry Precedents
+- Architecture Guidance
+  - `docs/OMS-SOR.prd` — Product Requirements Document for this POC
+  - `docs/TradeStation-Architect-Position.txt` — Technology stack and architect role description
+
+- Microservices & Event-Driven Architecture (foundational)
+  - Martin Fowler, "Microservices" (2014) — https://martinfowler.com/articles/microservices.html
+    - Seminal article on microservice patterns; cites Netflix, Guardian, comparethemarket.com as pioneers
+  - Sam Newman, "Building Microservices" (O'Reilly, 2021) — includes financial services patterns and case studies
+  - Martin Kleppmann, "Designing Data-Intensive Applications" (O'Reilly, 2017) — event sourcing, Kafka, consistency patterns used in trading platforms
+
+- Financial Services & Trading Systems (industry patterns)
+  - Adrian Cockcroft (Netflix/AWS), "Microservices at Scale" — widely cited in fintech for resilience and polyglot architecture patterns
+  - Confluent (Kafka) Financial Services Case Studies — Capital One, Rabobank, and anonymized tier-1 broker implementations
+    - https://www.confluent.io/customers/ (search: financial services)
+  - AWS Financial Services Blog — architecture patterns for regulated workloads and event-driven systems
+    - https://aws.amazon.com/blogs/industries/financial-services/
+  - InfoQ Financial Services Architecture articles — QCon talks on OMS modernization, distributed trading platforms
+    - https://www.infoq.com/ (search: "trading platform microservices", "OMS architecture")
+
+- Technology-Specific References
+  - Spring Boot documentation — microservices best practices, Kafka integration, observability
+    - https://spring.io/projects/spring-boot
+  - Kubernetes patterns for stateful workloads — https://kubernetes.io/docs/tutorials/stateful-application/
+  - Prometheus/Grafana best practices for financial systems — https://prometheus.io/docs/practices/
+  - OpenTelemetry distributed tracing — https://opentelemetry.io/
+
+- Standards & Protocols
+  - FIX Protocol — https://www.fixtrading.org/ (FIX 4.4 for POC, FIX 5.0 for production consideration)
+  - gRPC documentation — https://grpc.io/docs/
+  - Avro schema registry — https://docs.confluent.io/platform/current/schema-registry/
+
+- Recommended Conference Sessions (search for recordings)
+  - QCon, Kafka Summit, AWS re:Invent — search: "order management", "trading platform", "financial microservices"
+  - Speakers from JPMorgan, Goldman Sachs, Bloomberg occasionally present high-level patterns (no proprietary details)
+
+Note on Tier-1 Broker OMS Architectures
+- Tier-1 financial firms (Goldman Sachs, Morgan Stanley, Bloomberg AIM, Fidessa, ION) use Java-based microservices and event-driven architectures for OMS/execution platforms but rarely publish detailed white papers due to competitive/regulatory concerns.
+- Industry consensus (from conference talks, vendor case studies, and practitioner blogs): event-driven microservices with Kafka, polyglot persistence (Postgres + Redis + caches), and cloud-native deployment (Kubernetes) are standard patterns for modern OMS platforms.
+- This POC design aligns with observed best practices from publicly available fintech architecture discussions and vendor-published patterns.
