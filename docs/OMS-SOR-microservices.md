@@ -352,6 +352,28 @@ kubectl apply -f k8s/services/
 
 ---
 
+## Migration & Upgrade Notes
+
+This project includes a consolidated fresh-schema migration and framework upgrades. Follow these steps when applying changes to databases or upgrading environments:
+
+- Fresh deployments: the ingest service includes a consolidated `V1__initial_schema.sql` (classpath: `db/migration`) which creates tables using `uuid` columns for primary and aggregate IDs. Start the application against a *new* Postgres instance and Flyway will apply the V1 schema automatically.
+- Existing databases: do **not** run the fresh V1 schema against production DBs. Instead:
+  - Take a full backup/snapshot of the database before any schema changes.
+  - Validate that all existing identifier values are valid UUID strings (use queries like `SELECT aggregate_id FROM outbox_events WHERE aggregate_id !~ '^[0-9a-fA-F-]+'` to find non-UUIDs).
+  - Create a staging copy of the database and run migration scripts there first. For controlled conversions, write an `ALTER TABLE` migration that uses `USING (aggregate_id::uuid)` (as a single transaction), recreate dependent indexes, and verify application compatibility.
+- Application changes: this branch upgrades Spring Boot to 4.0.1 (Spring Framework 7.x) and standardizes identifiers to time-ordered UUIDv7. Ensure the following before upgrading runtime environments:
+  - Update any service or client that consumes the REST/gRPC API to accept UUID path parameters and produce UUID-typed fields in DTOs. The POC currently returns `orderId` as a UUID in API responses.
+  - If external consumers cannot accept UUIDs, keep DTOs as strings at the API boundary and convert inside the service to UUID internally.
+- Flyway usage (manual run): from `services/oms-ingest` you can run migrations manually with:
+
+```powershell
+cd services\oms-ingest
+mvn flyway:migrate
+```
+
+- Test & Staging: always validate migrations in staging with a representative dataset, run the full test suite (`mvn test` / `mvn verify`), and smoke-test Kafka flows and outbox publishing before rolling to production.
+
+
 ## References
 
 - [Spring Boot 4.x Documentation](https://spring.io/projects/spring-boot)
