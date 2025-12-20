@@ -1,0 +1,28 @@
+# Java / Maven
+target/
+**/target/
+.mvn/
+mvnw
+mvnw.cmd
+
+# IDEs
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+
+# Environment files
+.env
+.env.*
+
+# Flyway
+services/**/src/main/resources/db/migration/*.sql
