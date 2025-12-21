@@ -17,9 +17,8 @@ spring:
     defer-datasource-initialization: true
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
         jdbc:
-          time_zone: UTC
+          '[time_zone]': UTC
     show-sql: false
   
   flyway:
@@ -45,7 +44,7 @@ spring:
 # gRPC Configuration
 grpc:
   server:
-    port: ${GRPC_PORT:9091}
+    port: ${GRPC_PORT:9090}
     
 # REST API Configuration
 server:
@@ -62,11 +61,12 @@ management:
     health:
       show-details: when-authorized
   metrics:
-    export:
-      prometheus:
-        enabled: true
     tags:
       application: ${spring.application.name}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
   tracing:
     sampling:
       probability: ${TRACING_SAMPLE_RATE:1.0}
@@ -83,9 +83,9 @@ oms:
 logging:
   level:
     root: INFO
-    com.oms: DEBUG
-    org.springframework.kafka: INFO
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    '[com.oms]': DEBUG
+    '[org.springframework.kafka]': INFO
+    '[org.hibernate.SQL]': DEBUG
+    '[org.hibernate.type.descriptor.sql.BasicBinder]': TRACE
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
