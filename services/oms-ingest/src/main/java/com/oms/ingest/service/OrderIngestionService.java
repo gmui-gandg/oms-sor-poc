@@ -7,8 +7,6 @@ import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.oms.common.kafka.KafkaTopics;
 import com.oms.common.model.OrderDTO;
 import com.oms.ingest.model.Order;
@@ -20,6 +18,8 @@ import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 
 /**
  * Service for order ingestion.
@@ -68,7 +68,7 @@ public class OrderIngestionService {
             outboxRepository.save(outboxEvent);
             log.debug("Created outbox event: eventId={}", outboxEvent.getId());
 
-        } catch (JsonProcessingException e) {
+        } catch (JacksonException e) {
             log.error("Failed to serialize order to JSON", e);
             throw new RuntimeException("Failed to create outbox event", e);
         }

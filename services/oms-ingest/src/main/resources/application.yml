@@ -13,7 +13,8 @@ spring:
   
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
+    defer-datasource-initialization: true
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
@@ -30,7 +31,7 @@ spring:
     bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
-      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
       acks: all
       enable-idempotence: true
       properties:
@@ -44,7 +45,7 @@ spring:
 # gRPC Configuration
 grpc:
   server:
-    port: ${GRPC_PORT:9090}
+    port: ${GRPC_PORT:9091}
     
 # REST API Configuration
 server:

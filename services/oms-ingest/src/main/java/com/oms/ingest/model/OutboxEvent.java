@@ -3,6 +3,8 @@ package com.oms.ingest.model;
 import java.time.Instant;
 import java.util.UUID;
 
+import org.hibernate.annotations.ColumnTransformer;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -40,6 +42,7 @@ public class OutboxEvent {
     @Column(name = "event_type", length = 50, nullable = false)
     private String eventType;
 
+    @ColumnTransformer(write = "?::jsonb")
     @Column(name = "payload", columnDefinition = "jsonb", nullable = false)
     private String payload;
 
