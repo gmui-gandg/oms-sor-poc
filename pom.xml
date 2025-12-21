@@ -25,6 +25,7 @@
         <module>shared/common-kafka</module>
         <module>shared/common-observability</module>
         <module>services/oms-ingest</module>
+        <module>services/oms-validator</module>
         <module>services/oms-core</module>
     </modules>
 

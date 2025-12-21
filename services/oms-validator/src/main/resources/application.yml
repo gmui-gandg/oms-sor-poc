@@ -1,0 +1,95 @@
+spring:
+  application:
+    name: oms-validator
+
+  datasource:
+    url: jdbc:postgresql://${POSTGRES_HOST:localhost}:${POSTGRES_PORT:5432}/${POSTGRES_DB:oms}
+    username: ${POSTGRES_USER:oms_user}
+    password: ${POSTGRES_PASSWORD:changeme}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    defer-datasource-initialization: true
+    properties:
+      '[hibernate]':
+        jdbc:
+          time_zone: UTC
+    show-sql: false
+
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP:localhost:9092}
+    consumer:
+      group-id: oms-validator-group
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      properties:
+        max.poll.records: 50
+        session.timeout.ms: 30000
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      enable-idempotence: true
+    listener:
+      ack-mode: manual
+      concurrency: 3
+
+  threads:
+    virtual:
+      enabled: true
+
+# REST API Configuration
+server:
+  port: ${SERVER_PORT:8081}
+  shutdown: graceful
+
+# Actuator / Observability
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+  tracing:
+    sampling:
+      probability: ${TRACING_SAMPLE_RATE:1.0}
+
+# Application-specific configuration
+oms:
+  validator:
+    topics:
+      ingest: order.ingest
+      validated: order.validated
+      rejected: order.rejected
+    risk:
+      max-order-value: 1000000
+      max-position-size: 100000
+      check-buying-power: true
+    validation:
+      check-market-hours: false
+      check-symbol-exists: true
+
+# Logging
+logging:
+  level:
+    root: INFO
+    com.oms: DEBUG
+    org.springframework.kafka: INFO
+    org.hibernate.SQL: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

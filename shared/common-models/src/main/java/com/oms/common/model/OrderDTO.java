@@ -1,5 +1,6 @@
 package com.oms.common.model;
 
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -44,13 +45,13 @@ public class OrderDTO {
     private OrderType orderType;
 
     @Positive(message = "Quantity must be positive")
-    private Double quantity;
+    private BigDecimal quantity;
 
-    private Double filledQuantity;
+    private BigDecimal filledQuantity;
 
-    private Double limitPrice;
+    private BigDecimal limitPrice;
 
-    private Double stopPrice;
+    private BigDecimal stopPrice;
 
     @NotNull(message = "Time in force is required")
     private TimeInForce timeInForce;
