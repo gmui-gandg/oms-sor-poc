@@ -34,11 +34,20 @@ public class Order {
     @Column(name = "order_id", columnDefinition = "uuid", updatable = false, nullable = false)
     private UUID orderId;
 
-    @Column(name = "client_order_id", length = 100, nullable = false, unique = true)
+    @Column(name = "client_order_id", length = 100, nullable = false)
     private String clientOrderId;
 
     @Column(name = "account_id", length = 50, nullable = false)
     private String accountId;
+
+    @Column(name = "source_channel", length = 20, nullable = false)
+    private String sourceChannel;
+
+    @Column(name = "received_at", nullable = false)
+    private Instant receivedAt;
+
+    @Column(name = "request_id", length = 100)
+    private String requestId;
 
     @Column(name = "symbol", length = 20, nullable = false)
     private String symbol;
@@ -80,11 +89,17 @@ public class Order {
     @PrePersist
     protected void onCreate() {
         Instant now = Instant.now();
+        if (receivedAt == null) {
+            receivedAt = now;
+        }
         if (createdAt == null) {
             createdAt = now;
         }
         if (updatedAt == null) {
             updatedAt = now;
+        }
+        if (sourceChannel == null || sourceChannel.isBlank()) {
+            sourceChannel = "REST";
         }
         if (filledQuantity == null) {
             filledQuantity = BigDecimal.ZERO;
