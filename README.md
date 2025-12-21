@@ -123,6 +123,47 @@ cd services\oms-core
 mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=8081 --grpc.server.port=9091"
 ```
 
+---
+
+### One‑click Dev: `scripts/start-dev` (recommended)
+
+For quick local development you can use the included `start-dev` helper which will (by default) start the infra (Docker Compose) and run the `oms-ingest` service.
+
+- Windows (PowerShell):
+
+```powershell
+.\scripts\start-dev.ps1
+```
+
+- Linux / macOS (bash):
+
+```bash
+./scripts/start-dev.sh
+```
+
+Options:
+- `--no-infra` / `-NoInfra`: skip starting Docker infra if you already have Postgres/Kafka running.
+
+Environment variables (example overrides):
+
+```powershell
+# Postgres
+$env:POSTGRES_HOST = 'localhost'
+$env:POSTGRES_PORT = '5432'
+$env:POSTGRES_DB = 'oms'
+$env:POSTGRES_USER = 'oms_user'
+$env:POSTGRES_PASSWORD = 'changeme'
+
+# Kafka
+$env:KAFKA_BOOTSTRAP = 'localhost:9092'
+
+# Spring profile (optional)
+$env:SPRING_PROFILES_ACTIVE = 'local'
+```
+
+The helper script will run `mvn -pl services/oms-ingest -am -DskipTests spring-boot:run` which starts the ingest service in the foreground (use a separate terminal for other services).
+
+
 ### 4. Test the System
 
 **Submit a test order:**
