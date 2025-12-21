@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,6 +14,7 @@ import com.oms.ingest.model.Order;
 import com.oms.ingest.model.OutboxEvent;
 import com.oms.ingest.repository.OrderRepository;
 import com.oms.ingest.repository.OutboxRepository;
+import com.oms.ingest.service.OrderIngestionService.IngestResult;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
@@ -35,11 +37,21 @@ public class OrderIngestionService {
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
 
+    public record IngestResult(OrderDTO order, boolean created) {
+    }
+
     @Transactional
-    public OrderDTO ingestOrder(OrderDTO orderRequest) {
-        // Check for duplicate
-        if (orderRepository.existsByClientOrderId(orderRequest.getClientOrderId())) {
-            throw new IllegalArgumentException("Duplicate client order ID: " + orderRequest.getClientOrderId());
+    public IngestResult ingestOrder(OrderDTO orderRequest, String sourceChannel, String requestId) {
+        String normalizedChannel = (sourceChannel == null || sourceChannel.isBlank()) ? "REST" : sourceChannel.trim();
+
+        // Idempotency: treat (accountId, sourceChannel, clientOrderId) as the
+        // submission key.
+        Optional<Order> existing = orderRepository.findByAccountIdAndSourceChannelAndClientOrderId(
+                orderRequest.getAccountId(),
+                normalizedChannel,
+                orderRequest.getClientOrderId());
+        if (existing.isPresent()) {
+            return new IngestResult(toDTO(existing.get()), false);
         }
 
         // Basic validation
@@ -47,10 +59,24 @@ public class OrderIngestionService {
 
         // Convert DTO to Entity
         Order order = toEntity(orderRequest);
+        order.setSourceChannel(normalizedChannel);
+        order.setRequestId(requestId);
         order.setStatus(Order.OrderStatus.NEW);
 
         // Save order (atomic with outbox)
-        Order savedOrder = orderRepository.save(order);
+        final Order savedOrder;
+        try {
+            savedOrder = orderRepository.save(order);
+        } catch (DataIntegrityViolationException e) {
+            // Race condition: another request with same (accountId, sourceChannel,
+            // clientOrderId) won the insert.
+            return orderRepository.findByAccountIdAndSourceChannelAndClientOrderId(
+                    orderRequest.getAccountId(),
+                    normalizedChannel,
+                    orderRequest.getClientOrderId())
+                    .map(o -> new IngestResult(toDTO(o), false))
+                    .orElseThrow(() -> e);
+        }
         log.debug("Saved order: orderId={}", savedOrder.getOrderId());
 
         // Create outbox event for Kafka publication
@@ -80,7 +106,7 @@ public class OrderIngestionService {
                 .register(meterRegistry)
                 .increment();
 
-        return toDTO(savedOrder);
+        return new IngestResult(toDTO(savedOrder), true);
     }
 
     public Optional<OrderDTO> getOrder(UUID orderId) {
