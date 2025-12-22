@@ -11,6 +11,10 @@ spring:
       minimum-idle: 2
       connection-timeout: 30000
 
+  flyway:
+    enabled: true
+    table: flyway_schema_history_validator
+
   jpa:
     hibernate:
       ddl-auto: none
