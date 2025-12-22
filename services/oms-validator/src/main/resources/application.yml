@@ -78,8 +78,8 @@ oms:
   validator:
     topics:
       ingest: orders.inbound
-      validated: order.validated
-      rejected: order.rejected
+      validated: orders.validated
+      rejected: orders.rejected
     risk:
       max-order-value: 1000000
       max-position-size: 100000
