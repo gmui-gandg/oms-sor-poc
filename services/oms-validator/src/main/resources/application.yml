@@ -7,8 +7,8 @@ spring:
     username: ${POSTGRES_USER:oms_user}
     password: ${POSTGRES_PASSWORD:changeme}
     hikari:
-      maximum-pool-size: 10
-      minimum-idle: 2
+      maximum-pool-size: 20
+      minimum-idle: 8
       connection-timeout: 30000
 
   flyway:
@@ -43,7 +43,7 @@ spring:
       enable-idempotence: true
     listener:
       ack-mode: manual
-      concurrency: 3
+      concurrency: 8
 
   threads:
     virtual:
