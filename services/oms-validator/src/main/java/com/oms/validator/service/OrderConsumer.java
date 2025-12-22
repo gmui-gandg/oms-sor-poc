@@ -35,7 +35,6 @@ public class OrderConsumer {
         groupId = "${spring.kafka.consumer.group-id}",
         containerFactory = "kafkaListenerContainerFactory"
     )
-    @Transactional
     public void consumeOrder(
             @Payload String orderJson,
             @Header(KafkaHeaders.RECEIVED_KEY) String key,
