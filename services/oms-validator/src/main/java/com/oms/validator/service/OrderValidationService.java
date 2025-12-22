@@ -3,11 +3,9 @@ package com.oms.validator.service;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 
-import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import com.oms.common.model.OrderDTO;
 import com.oms.validator.config.ValidatorProperties;
@@ -18,8 +16,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Core validation logic for orders
- * Performs parameter validation and risk checks
+ * Core validation logic for orders.
+ * Pure validation - no database access.
+ * Performs parameter validation and risk checks.
  */
 @Service
 @RequiredArgsConstructor
@@ -28,42 +27,23 @@ public class OrderValidationService {
 
     private final ValidatorProperties properties;
     private final ObjectMapper objectMapper;
-    private final OrderRepository orderRepository;
     private final RiskCheckService riskCheckService;
 
+    /**
+     * Validates an order from JSON.
+     * Returns ValidationResult with the parsed order and validation status.
+     */
     public ValidationResult validateOrder(String orderJson) {
         try {
-            // Parse order event from Kafka
-            JsonNode eventNode = objectMapper.readTree(orderJson);
-            JsonNode payloadNode = eventNode.get("payload");
-            
-            if (payloadNode == null) {
-                return ValidationResult.rejected(null, "Invalid event format: missing payload");
-            }
+            // Parse order from Kafka message
+            OrderDTO order = objectMapper.readValue(orderJson, OrderDTO.class);
 
-            OrderDTO order = objectMapper.treeToValue(payloadNode, OrderDTO.class);
-            
             if (order.getOrderId() == null) {
                 return ValidationResult.rejected(order, "Missing orderId");
             }
 
             log.debug("Validating order: orderId={}, symbol={}, side={}, quantity={}",
                     order.getOrderId(), order.getSymbol(), order.getSide(), order.getQuantity());
-
-            // Load order from database to get current state
-            com.oms.validator.model.Order dbOrder = orderRepository.findById(order.getOrderId())
-                    .orElse(null);
-
-            if (dbOrder == null) {
-                log.warn("Order {} not found in database", order.getOrderId());
-                return ValidationResult.rejected(order, "Order not found");
-            }
-
-            // Only validate orders in NEW status
-            if (dbOrder.getStatus() != com.oms.validator.model.Order.OrderStatus.NEW) {
-                log.debug("Order {} already processed: status={}", order.getOrderId(), dbOrder.getStatus());
-                return ValidationResult.rejected(order, "Order already processed: " + dbOrder.getStatus());
-            }
 
             // Perform validations
             List<String> errors = new ArrayList<>();
@@ -86,12 +66,10 @@ public class OrderValidationService {
 
             if (!errors.isEmpty()) {
                 String rejectionReason = String.join("; ", errors);
-                updateOrderStatus(dbOrder, com.oms.validator.model.Order.OrderStatus.REJECTED);
                 return ValidationResult.rejected(order, rejectionReason);
             }
 
             // All checks passed
-            updateOrderStatus(dbOrder, com.oms.validator.model.Order.OrderStatus.VALIDATED);
             return ValidationResult.validated(order);
 
         } catch (Exception e) {
@@ -117,13 +95,17 @@ public class OrderValidationService {
             errors.add("Order type is required");
         }
 
+        if (order.getTimeInForce() == null) {
+            errors.add("Time in force is required");
+        }
+
         // Limit orders must have limit price
-        if ("LIMIT".equals(order.getOrderType()) && order.getLimitPrice() == null) {
+        if (order.getOrderType() == OrderDTO.OrderType.LIMIT && order.getLimitPrice() == null) {
             errors.add("Limit price required for LIMIT orders");
         }
 
         // Stop orders must have stop price
-        if ("STOP".equals(order.getOrderType()) && order.getStopPrice() == null) {
+        if (order.getOrderType() == OrderDTO.OrderType.STOP && order.getStopPrice() == null) {
             errors.add("Stop price required for STOP orders");
         }
     }
@@ -133,13 +115,6 @@ public class OrderValidationService {
         if (symbol != null && symbol.length() > 10) {
             errors.add("Invalid symbol: " + symbol);
         }
-    }
-
-    private void updateOrderStatus(com.oms.validator.model.Order order, 
-                                   com.oms.validator.model.Order.OrderStatus newStatus) {
-        order.setStatus(newStatus);
-        orderRepository.save(order);
-        log.info("Updated order {} status to {}", order.getOrderId(), newStatus);
     }
 
     @Data

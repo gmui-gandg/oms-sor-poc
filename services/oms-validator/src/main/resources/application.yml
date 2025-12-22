@@ -73,7 +73,7 @@ management:
 oms:
   validator:
     topics:
-      ingest: order.ingest
+      ingest: orders.inbound
       validated: order.validated
       rejected: order.rejected
     risk:
