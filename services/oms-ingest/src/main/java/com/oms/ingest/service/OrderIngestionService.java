@@ -114,7 +114,7 @@ public class OrderIngestionService {
     }
 
     private void validateOrder(OrderDTO order) {
-        if (order.getQuantity() == null || order.getQuantity() <= 0) {
+        if (order.getQuantity() == null || order.getQuantity().compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Quantity must be positive");
         }
 
@@ -134,9 +134,9 @@ public class OrderIngestionService {
                 .symbol(dto.getSymbol())
                 .side(Order.OrderSide.valueOf(dto.getSide().name()))
                 .orderType(Order.OrderType.valueOf(dto.getOrderType().name()))
-                .quantity(BigDecimal.valueOf(dto.getQuantity()))
-                .limitPrice(dto.getLimitPrice() != null ? BigDecimal.valueOf(dto.getLimitPrice()) : null)
-                .stopPrice(dto.getStopPrice() != null ? BigDecimal.valueOf(dto.getStopPrice()) : null)
+                .quantity(dto.getQuantity())
+                .limitPrice(dto.getLimitPrice())
+                .stopPrice(dto.getStopPrice())
                 .timeInForce(Order.TimeInForce.valueOf(dto.getTimeInForce().name()))
                 .build();
     }
@@ -149,10 +149,10 @@ public class OrderIngestionService {
                 .symbol(entity.getSymbol())
                 .side(OrderDTO.OrderSide.valueOf(entity.getSide().name()))
                 .orderType(OrderDTO.OrderType.valueOf(entity.getOrderType().name()))
-                .quantity(entity.getQuantity().doubleValue())
-                .filledQuantity(entity.getFilledQuantity() != null ? entity.getFilledQuantity().doubleValue() : 0.0)
-                .limitPrice(entity.getLimitPrice() != null ? entity.getLimitPrice().doubleValue() : null)
-                .stopPrice(entity.getStopPrice() != null ? entity.getStopPrice().doubleValue() : null)
+                .quantity(entity.getQuantity())
+                .filledQuantity(entity.getFilledQuantity())
+                .limitPrice(entity.getLimitPrice())
+                .stopPrice(entity.getStopPrice())
                 .timeInForce(OrderDTO.TimeInForce.valueOf(entity.getTimeInForce().name()))
                 .status(OrderDTO.OrderStatus.valueOf(entity.getStatus().name()))
                 .createdAt(entity.getCreatedAt())

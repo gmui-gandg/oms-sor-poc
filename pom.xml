@@ -25,6 +25,7 @@
         <module>shared/common-kafka</module>
         <module>shared/common-observability</module>
         <module>services/oms-ingest</module>
+        <module>services/oms-validator</module>
         <module>services/oms-core</module>
     </modules>
 
@@ -42,9 +43,6 @@
         <grpc.version>1.62.2</grpc.version>
         <protobuf.version>3.25.3</protobuf.version>
         <grpc-spring-boot-starter.version>3.1.0.RELEASE</grpc-spring-boot-starter.version>
-        
-        <!-- Kafka -->
-        <kafka.version>3.6.1</kafka.version>
         
         <!-- Database -->
         <postgresql.version>42.7.1</postgresql.version>
