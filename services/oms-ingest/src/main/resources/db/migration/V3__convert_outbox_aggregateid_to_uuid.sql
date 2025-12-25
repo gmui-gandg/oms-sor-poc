@@ -1,0 +1,4 @@
+-- V3__convert_outbox_aggregateid_to_uuid.sql
+-- DEPRECATED: Consolidated into V1__initial_schema.sql
+-- This file is intentionally left as a no-op placeholder to preserve
+-- historical migration ordering for repositories that may include it.

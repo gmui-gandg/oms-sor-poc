@@ -1,0 +1,4 @@
+-- V2__create_outbox_table.sql
+-- DEPRECATED: Consolidated into V1__initial_schema.sql
+-- This file is intentionally left as a no-op placeholder to preserve
+-- historical migration ordering for repositories that may include it.
