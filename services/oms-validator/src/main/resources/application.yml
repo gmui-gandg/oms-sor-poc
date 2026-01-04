@@ -20,9 +20,9 @@ spring:
       ddl-auto: none
     defer-datasource-initialization: true
     properties:
-      '[hibernate]':
+      hibernate:
         jdbc:
-          time_zone: UTC
+          '[time_zone]': UTC
     show-sql: false
 
   kafka:
@@ -64,14 +64,15 @@ management:
     health:
       show-details: when-authorized
   metrics:
-    export:
-      prometheus:
-        enabled: true
     tags:
       application: ${spring.application.name}
   tracing:
     sampling:
       probability: ${TRACING_SAMPLE_RATE:1.0}
+  prometheus:
+    metrics:
+      export:
+        enabled: true
 
 # Application-specific configuration
 oms:
@@ -92,8 +93,8 @@ oms:
 logging:
   level:
     root: INFO
-    com.oms: DEBUG
-    org.springframework.kafka: INFO
-    org.hibernate.SQL: DEBUG
+    '[com.oms]': DEBUG
+    '[org.springframework.kafka]': INFO
+    '[org.hibernate.SQL]': DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

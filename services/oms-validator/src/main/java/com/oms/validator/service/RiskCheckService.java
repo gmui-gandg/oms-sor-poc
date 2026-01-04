@@ -57,11 +57,11 @@ public class RiskCheckService {
         }
 
         BigDecimal price = null;
-        if ("LIMIT".equals(order.getOrderType()) && order.getLimitPrice() != null) {
+        if (order.getOrderType() == OrderDTO.OrderType.LIMIT && order.getLimitPrice() != null) {
             price = order.getLimitPrice();
-        } else if ("STOP".equals(order.getOrderType()) && order.getStopPrice() != null) {
+        } else if (order.getOrderType() == OrderDTO.OrderType.STOP && order.getStopPrice() != null) {
             price = order.getStopPrice();
-        } else if ("MARKET".equals(order.getOrderType())) {
+        } else if (order.getOrderType() == OrderDTO.OrderType.MARKET) {
             // Stub: For market orders, use last traded price or estimated price
             // For now, skip value check for market orders
             return null;
