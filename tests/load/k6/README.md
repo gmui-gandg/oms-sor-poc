@@ -29,7 +29,7 @@ docker pull grafana/k6
    .\scripts\start-infra.ps1
    
    # Start oms-ingest (in terminal 1)
-   java -Dgrpc.server.port=9091 -jar services\oms-ingest\target\oms-ingest-1.0.0-SNAPSHOT.jar
+   java -Dgrpc.server.port=9080 -jar services\oms-ingest\target\oms-ingest-1.0.0-SNAPSHOT.jar
    
    # Start oms-validator (in terminal 2)
    java -jar services\oms-validator\target\oms-validator-1.0.0-SNAPSHOT.jar

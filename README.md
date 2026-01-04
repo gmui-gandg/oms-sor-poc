@@ -17,13 +17,13 @@ This POC implements an event-driven microservices architecture using:
 
 | Service | Port | gRPC Port | Description |
 |---------|------|-----------|-------------|
-| **oms-ingest** | 8080 | 9090 | Order validation and ingestion (thin ingest layer) |
-| **oms-core** | 8081 | 9091 | Order lifecycle orchestration and state management |
-| **sor-engine** | 8082 | 9092 | Smart order routing decisions |
-| **execution-adapter** | 8083 | 9093 | FIX protocol execution venue connectivity |
-| **risk-service** | 8084 | 9094 | Pre-trade risk checks and position tracking |
-| **marketdata-simulator** | 8085 | 9095 | Mock market data provider (POC only) |
-| **broker-simulator** | 8086 | 9096 | Mock broker FIX acceptor (POC only) |
+| **oms-ingest** | 8080 | 9080 | Order validation and ingestion (thin ingest layer) |
+| **oms-core** | 8081 | 9081 | Order lifecycle orchestration and state management |
+| **sor-engine** | 8082 | 9082 | Smart order routing decisions |
+| **execution-adapter** | 8083 | 9083 | FIX protocol execution venue connectivity |
+| **risk-service** | 8084 | 9084 | Pre-trade risk checks and position tracking |
+| **marketdata-simulator** | 8085 | 9085 | Mock market data provider (POC only) |
+| **broker-simulator** | 8086 | 9086 | Mock broker FIX acceptor (POC only) |
 
 ### Data Flow
 
@@ -120,7 +120,7 @@ mvn spring-boot:run
 
 # Terminal 2 - OMS Core
 cd services\oms-core
-mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=8081 --grpc.server.port=9091"
+mvn spring-boot:run -Dspring-boot.run.arguments="--server.port=8081 --grpc.server.port=9081"
 ```
 
 ---

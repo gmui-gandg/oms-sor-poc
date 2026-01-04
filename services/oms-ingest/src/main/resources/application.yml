@@ -45,7 +45,7 @@ spring:
 # gRPC Configuration
 grpc:
   server:
-    port: ${GRPC_PORT:9090}
+    port: ${GRPC_PORT:9080}
     
 # REST API Configuration
 server:
