@@ -39,8 +39,9 @@ spring:
   
   threads:
     virtual:
-      enabled: true  # Enable Java 21 Virtual Threads
-
+      enabled: true  # Enable Java 25 Virtual Threads
+      # Note: project now targets Java 25; ensure runtime uses JDK 25
+      
 # gRPC Configuration
 grpc:
   server:

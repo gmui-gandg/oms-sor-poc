@@ -6,7 +6,7 @@ A proof-of-concept implementation of an institutional-grade Order Management Sys
 
 This POC implements an event-driven microservices architecture using:
 
--- **Spring Boot 4.0.1 (Spring Framework 7.x)** with Java 21 Virtual Threads (Project Loom)
+- **Spring Boot 4.0.1 (Spring Framework 7.x)** with Java 25 Virtual Threads (Project Loom)
 - **Apache Kafka** for asynchronous event streaming
 - **gRPC** for low-latency synchronous service communication
 - **PostgreSQL** for transactional persistence
@@ -55,13 +55,13 @@ Client → API Gateway (REST/WebSocket)
 
 ### Notable changes in this branch
 - **Framework upgrade**: Spring Boot upgraded to **4.0.1** (uses Spring Framework 7.x).
-- **Java**: project targets **Java 21**.
+- **Java**: project targets **Java 25**.
 - **IDs**: application and DB use time-ordered UUIDv7 for identifiers (UUID-creator library).
 - **Database migrations**: consolidated fresh-schema migration `V1__initial_schema.sql` creates tables using `uuid` columns (no incremental migration required for new databases).
 
 ## 📋 Prerequisites
 
-- **Java 21** (JDK 21 LTS)
+-- **Java 25** (JDK 25)
 - **Maven 3.9+**
 - **Docker Desktop** (for local development)
 - **Docker Compose** v2.x
@@ -70,7 +70,7 @@ Client → API Gateway (REST/WebSocket)
 ### Verify Installation
 
 ```powershell
-java -version       # Should show Java 21
+java -version       # Should show Java 25
 mvn -version        # Should show Maven 3.9+
 docker --version    # Should show Docker 24+
 docker-compose version
@@ -355,7 +355,7 @@ docker-compose logs -f
 - Async processing for non-critical path (validation, routing)
 - Sync gRPC calls for critical path (risk checks)
 
-### 3. Virtual Threads (Java 21)
+### 3. Virtual Threads (Java 25)
 
 All services use Virtual Threads for high-throughput I/O:
 

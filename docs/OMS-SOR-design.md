@@ -7,7 +7,7 @@ Overview
 
 Chosen Tech Stack (POC)
 - Language & Framework: Java on the JVM. Recommended framework: **Spring Boot 4.x** (rich ecosystem for Kafka, metrics, gRPC, security). Micronaut may be used if lower memory footprint is required.
-  - **Java 21+ with Virtual Threads (Project Loom)** — improves throughput and simplifies async I/O handling; Spring Boot 4.x natively supports virtual threads for scalable, low-latency services.
+  - **Java 25+ with Virtual Threads (Project Loom)** — improves throughput and simplifies async I/O handling; Spring Boot 4.x natively supports virtual threads for scalable, low-latency services.
 - Messaging / Streaming: **Apache Kafka** (use Avro + Schema Registry for production; JSON acceptable for POC).
 - Database: **PostgreSQL** as canonical transactional store; **Redis** (Lettuce client) for ephemeral caches, deduplication, and distributed locks.
 - APIs & Protocols: **gRPC** for B2B service-to-service APIs, **REST** for UI and admin, **FIX 4.4** for execution adapters, and **WebSocket** for client notifications.
@@ -31,7 +31,7 @@ Latency & Performance Considerations (2025 context)
   - **High-frequency trading (HFT)** — C++/Rust/FPGA for critical path; Java for risk aggregation, reporting, and control plane.
   - **ML-driven SOR heuristics** — Python services (with gRPC or Kafka integration) for predictive routing models.
 - **Java performance optimizations available in 2025**:
-  - **Virtual Threads (Java 21+)** — dramatically improves I/O-bound throughput without reactive complexity.
+  - **Virtual Threads (Java 25+)** — dramatically improves I/O-bound throughput without reactive complexity.
   - **GraalVM Native Image** — compile Spring Boot to native binary for <100ms startup and lower memory footprint (useful for serverless or edge deployments).
   - **JVM tuning** — GC tuning (ZGC, Shenandoah for low-pause), JIT compiler optimizations, and profiling (JFR, async-profiler).
 - **Industry precedent (2025)**:
