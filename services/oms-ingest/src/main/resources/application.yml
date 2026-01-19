@@ -57,7 +57,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,prometheus,info,metrics
+        include: health,prometheus,info,metrics,beans,conditions
   endpoint:
     health:
       show-details: when-authorized
@@ -71,6 +71,9 @@ management:
   tracing:
     sampling:
       probability: ${TRACING_SAMPLE_RATE:1.0}
+  otlp:
+    tracing:
+      endpoint: ${OTLP_ENDPOINT:http://localhost:4317}
 
 # Application-specific configuration
 oms:
@@ -89,4 +92,4 @@ logging:
     '[org.hibernate.SQL]': DEBUG
     '[org.hibernate.type.descriptor.sql.BasicBinder]': TRACE
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{traceId:-},%X{spanId:-}] - %msg%n"

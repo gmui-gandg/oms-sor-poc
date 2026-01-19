@@ -13,7 +13,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U oms_user -d oms"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB} || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -77,6 +77,23 @@ services:
       timeout: 10s
       retries: 3
 
+  tempo:
+    image: grafana/tempo:latest
+    container_name: oms-tempo
+    ports:
+      - "3200:3200"   # Tempo query / Grafana
+      - "4317:4317"   # OTLP gRPC receiver
+      - "9411:9411"   # Zipkin receiver
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes:
+      - ./tempo.yaml:/etc/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3200/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   prometheus:
     image: prom/prometheus:latest
     container_name: oms-prometheus
@@ -99,10 +116,13 @@ services:
       GF_SECURITY_ADMIN_PASSWORD: admin
     volumes:
       - grafana_data:/var/lib/grafana
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
     depends_on:
       - prometheus
+      - tempo
 
 volumes:
   postgres_data:
   prometheus_data:
   grafana_data:
+  tempo_data:

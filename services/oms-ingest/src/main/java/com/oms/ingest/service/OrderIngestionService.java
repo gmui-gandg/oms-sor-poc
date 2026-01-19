@@ -14,10 +14,11 @@ import com.oms.ingest.model.Order;
 import com.oms.ingest.model.OutboxEvent;
 import com.oms.ingest.repository.OrderRepository;
 import com.oms.ingest.repository.OutboxRepository;
-import com.oms.ingest.service.OrderIngestionService.IngestResult;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import tools.jackson.core.JacksonException;
@@ -36,77 +37,132 @@ public class OrderIngestionService {
     private final OutboxRepository outboxRepository;
     private final ObjectMapper objectMapper;
     private final MeterRegistry meterRegistry;
+    private final Tracer tracer;
 
     public record IngestResult(OrderDTO order, boolean created) {
     }
 
     @Transactional
     public IngestResult ingestOrder(OrderDTO orderRequest, String sourceChannel, String requestId) {
-        String normalizedChannel = (sourceChannel == null || sourceChannel.isBlank()) ? "REST" : sourceChannel.trim();
+        Span span = tracer.nextSpan().name("order.ingest.service").start();
+        try (Tracer.SpanInScope ws = tracer.withSpan(span)) {
+            span.tag("service", "order-ingestion");
+            span.tag("order.accountId", orderRequest.getAccountId());
+            span.tag("order.symbol", orderRequest.getSymbol());
 
-        // Idempotency: treat (accountId, sourceChannel, clientOrderId) as the
-        // submission key.
-        Optional<Order> existing = orderRepository.findByAccountIdAndSourceChannelAndClientOrderId(
-                orderRequest.getAccountId(),
-                normalizedChannel,
-                orderRequest.getClientOrderId());
-        if (existing.isPresent()) {
-            return new IngestResult(toDTO(existing.get()), false);
+            String normalizedChannel = (sourceChannel == null || sourceChannel.isBlank()) ? "REST"
+                    : sourceChannel.trim();
+            span.tag("channel", normalizedChannel);
+
+            // Idempotency check
+            Span idempotencySpan = tracer.nextSpan().name("db.check-idempotency").start();
+            try (Tracer.SpanInScope ws2 = tracer.withSpan(idempotencySpan)) {
+                idempotencySpan.tag("db.operation", "findByAccountIdAndSourceChannelAndClientOrderId");
+                idempotencySpan.tag("db.table", "orders");
+
+                Optional<Order> existing = orderRepository.findByAccountIdAndSourceChannelAndClientOrderId(
+                        orderRequest.getAccountId(),
+                        normalizedChannel,
+                        orderRequest.getClientOrderId());
+
+                if (existing.isPresent()) {
+                    idempotencySpan.event("order.duplicate-found");
+                    span.tag("order.duplicate", "true");
+                    return new IngestResult(toDTO(existing.get()), false);
+                }
+                idempotencySpan.event("order.unique-verified");
+            } finally {
+                idempotencySpan.end();
+            }
+
+            // Validation
+            Span validationSpan = tracer.nextSpan().name("order.validate").start();
+            try (Tracer.SpanInScope ws2 = tracer.withSpan(validationSpan)) {
+                validateOrder(orderRequest);
+                validationSpan.event("validation.passed");
+            } finally {
+                validationSpan.end();
+            }
+
+            // Convert and save
+            Order order = toEntity(orderRequest);
+            order.setSourceChannel(normalizedChannel);
+            order.setRequestId(requestId);
+            order.setStatus(Order.OrderStatus.NEW);
+
+            Span saveSpan = tracer.nextSpan().name("db.save-order").start();
+            final Order savedOrder;
+            try (Tracer.SpanInScope ws2 = tracer.withSpan(saveSpan)) {
+                saveSpan.tag("db.operation", "insert");
+                saveSpan.tag("db.table", "orders");
+
+                try {
+                    savedOrder = orderRepository.save(order);
+                    saveSpan.tag("order.id", savedOrder.getOrderId().toString());
+                    saveSpan.event("order.persisted");
+                    log.debug("Saved order: orderId={}", savedOrder.getOrderId());
+                } catch (DataIntegrityViolationException e) {
+                    saveSpan.tag("error", "true");
+                    saveSpan.tag("error.type", "race-condition");
+                    saveSpan.event("db.conflict");
+                    // Race condition: another request won the insert
+                    return orderRepository.findByAccountIdAndSourceChannelAndClientOrderId(
+                            orderRequest.getAccountId(),
+                            normalizedChannel,
+                            orderRequest.getClientOrderId())
+                            .map(o -> new IngestResult(toDTO(o), false))
+                            .orElseThrow(() -> e);
+                }
+            } finally {
+                saveSpan.end();
+            }
+
+            span.tag("order.id", savedOrder.getOrderId().toString());
+
+            // Create outbox event
+            Span outboxSpan = tracer.nextSpan().name("db.save-outbox").start();
+            try (Tracer.SpanInScope ws2 = tracer.withSpan(outboxSpan)) {
+                outboxSpan.tag("db.operation", "insert");
+                outboxSpan.tag("db.table", "outbox_events");
+                outboxSpan.tag("event.type", "OrderCreated");
+                outboxSpan.tag("kafka.topic", KafkaTopics.ORDERS_INBOUND);
+
+                String payload = objectMapper.writeValueAsString(toDTO(savedOrder));
+                OutboxEvent outboxEvent = OutboxEvent.builder()
+                        .aggregateType("Order")
+                        .aggregateId(savedOrder.getOrderId())
+                        .eventType("OrderCreated")
+                        .topic(KafkaTopics.ORDERS_INBOUND)
+                        .kafkaKey(savedOrder.getOrderId())
+                        .payload(payload)
+                        .build();
+
+                outboxRepository.save(outboxEvent);
+                outboxSpan.tag("outbox.eventId", String.valueOf(outboxEvent.getId()));
+                outboxSpan.event("outbox.event-created");
+                log.debug("Created outbox event: eventId={}", outboxEvent.getId());
+
+            } catch (JacksonException e) {
+                outboxSpan.tag("error", "true");
+                outboxSpan.tag("error.type", "serialization");
+                log.error("Failed to serialize order to JSON", e);
+                throw new RuntimeException("Failed to create outbox event", e);
+            } finally {
+                outboxSpan.end();
+            }
+
+            // Metrics
+            Counter.builder("oms.ingest.orders.received")
+                    .tag("symbol", savedOrder.getSymbol())
+                    .tag("side", savedOrder.getSide().name())
+                    .register(meterRegistry)
+                    .increment();
+
+            span.event("order.ingestion-complete");
+            return new IngestResult(toDTO(savedOrder), true);
+        } finally {
+            span.end();
         }
-
-        // Basic validation
-        validateOrder(orderRequest);
-
-        // Convert DTO to Entity
-        Order order = toEntity(orderRequest);
-        order.setSourceChannel(normalizedChannel);
-        order.setRequestId(requestId);
-        order.setStatus(Order.OrderStatus.NEW);
-
-        // Save order (atomic with outbox)
-        final Order savedOrder;
-        try {
-            savedOrder = orderRepository.save(order);
-        } catch (DataIntegrityViolationException e) {
-            // Race condition: another request with same (accountId, sourceChannel,
-            // clientOrderId) won the insert.
-            return orderRepository.findByAccountIdAndSourceChannelAndClientOrderId(
-                    orderRequest.getAccountId(),
-                    normalizedChannel,
-                    orderRequest.getClientOrderId())
-                    .map(o -> new IngestResult(toDTO(o), false))
-                    .orElseThrow(() -> e);
-        }
-        log.debug("Saved order: orderId={}", savedOrder.getOrderId());
-
-        // Create outbox event for Kafka publication
-        try {
-            String payload = objectMapper.writeValueAsString(toDTO(savedOrder));
-            OutboxEvent outboxEvent = OutboxEvent.builder()
-                    .aggregateType("Order")
-                    .aggregateId(savedOrder.getOrderId())
-                    .eventType("OrderCreated")
-                    .topic(KafkaTopics.ORDERS_INBOUND)
-                    .kafkaKey(savedOrder.getOrderId())
-                    .payload(payload)
-                    .build();
-
-            outboxRepository.save(outboxEvent);
-            log.debug("Created outbox event: eventId={}", outboxEvent.getId());
-
-        } catch (JacksonException e) {
-            log.error("Failed to serialize order to JSON", e);
-            throw new RuntimeException("Failed to create outbox event", e);
-        }
-
-        // Metrics
-        Counter.builder("oms.ingest.orders.received")
-                .tag("symbol", savedOrder.getSymbol())
-                .tag("side", savedOrder.getSide().name())
-                .register(meterRegistry)
-                .increment();
-
-        return new IngestResult(toDTO(savedOrder), true);
     }
 
     public Optional<OrderDTO> getOrder(UUID orderId) {
