@@ -1,0 +1,10 @@
+{
+    "clientOrderId": "stop-001",
+    "accountId": "ACC-3",
+    "symbol": "TSLA",
+    "side": "BUY",
+    "orderType": "STOP",
+    "quantity": 2,
+    "stopPrice": 650.00,
+    "timeInForce": "DAY"
+}

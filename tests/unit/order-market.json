@@ -1,0 +1,9 @@
+{
+    "clientOrderId": "market-013",
+    "accountId": "ACC-1",
+    "symbol": "AAPL",
+    "side": "BUY",
+    "orderType": "MARKET",
+    "quantity": 10,
+    "timeInForce": "DAY"
+}

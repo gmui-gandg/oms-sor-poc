@@ -1,0 +1,10 @@
+{
+    "clientOrderId": "limit-001",
+    "accountId": "ACC-2",
+    "symbol": "MSFT",
+    "side": "SELL",
+    "orderType": "LIMIT",
+    "quantity": 5,
+    "limitPrice": 320.50,
+    "timeInForce": "GTC"
+}
