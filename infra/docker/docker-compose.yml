@@ -117,6 +117,8 @@ services:
     volumes:
       - grafana_data:/var/lib/grafana
       - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ../../grafana/provisioning/dashboards/dashboards.yaml:/etc/grafana/provisioning/dashboards/dashboards.yaml:ro
+      - ../../grafana/dashboards:/var/lib/grafana/dashboards:ro
     depends_on:
       - prometheus
       - tempo

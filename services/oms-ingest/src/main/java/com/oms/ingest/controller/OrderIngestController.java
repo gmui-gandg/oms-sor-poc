@@ -20,8 +20,8 @@ import com.oms.ingest.service.OrderIngestionService;
 import io.micrometer.tracing.Span;
 import io.micrometer.tracing.Tracer;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * REST API for order submission.
@@ -29,12 +29,17 @@ import lombok.extern.slf4j.Slf4j;
  */
 @RestController
 @RequestMapping("/api/v1/orders")
-@RequiredArgsConstructor
-@Slf4j
 public class OrderIngestController {
+
+    private static final Logger log = LoggerFactory.getLogger(OrderIngestController.class);
 
     private final OrderIngestionService orderIngestionService;
     private final Tracer tracer;
+
+    public OrderIngestController(OrderIngestionService orderIngestionService, Tracer tracer) {
+        this.orderIngestionService = orderIngestionService;
+        this.tracer = tracer;
+    }
 
     @PostMapping
     public ResponseEntity<OrderResponse> placeOrder(
@@ -146,8 +151,6 @@ public class OrderIngestController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @lombok.Data
-    @lombok.Builder
     public static class OrderResponse {
         private java.util.UUID orderId;
         private String clientOrderId;
@@ -155,5 +158,71 @@ public class OrderIngestController {
         private Boolean created;
         private String message;
         private Long timestamp;
+
+        public java.util.UUID getOrderId() {
+            return orderId;
+        }
+
+        public String getClientOrderId() {
+            return clientOrderId;
+        }
+
+        public String getStatus() {
+            return status;
+        }
+
+        public Boolean getCreated() {
+            return created;
+        }
+
+        public String getMessage() {
+            return message;
+        }
+
+        public Long getTimestamp() {
+            return timestamp;
+        }
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public static class Builder {
+            private final OrderResponse r = new OrderResponse();
+
+            public Builder orderId(java.util.UUID orderId) {
+                r.orderId = orderId;
+                return this;
+            }
+
+            public Builder clientOrderId(String clientOrderId) {
+                r.clientOrderId = clientOrderId;
+                return this;
+            }
+
+            public Builder status(String status) {
+                r.status = status;
+                return this;
+            }
+
+            public Builder created(Boolean created) {
+                r.created = created;
+                return this;
+            }
+
+            public Builder message(String message) {
+                r.message = message;
+                return this;
+            }
+
+            public Builder timestamp(Long timestamp) {
+                r.timestamp = timestamp;
+                return this;
+            }
+
+            public OrderResponse build() {
+                return r;
+            }
+        }
     }
 }

@@ -8,7 +8,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.oms.common.kafka.KafkaTopics;
 import com.oms.common.model.OrderDTO;
 import com.oms.ingest.model.Order;
 import com.oms.ingest.model.OutboxEvent;
@@ -125,14 +124,14 @@ public class OrderIngestionService {
                 outboxSpan.tag("db.operation", "insert");
                 outboxSpan.tag("db.table", "outbox_events");
                 outboxSpan.tag("event.type", "OrderCreated");
-                outboxSpan.tag("kafka.topic", KafkaTopics.ORDERS_INBOUND);
+                outboxSpan.tag("kafka.topic", "orders.inbound");
 
                 String payload = objectMapper.writeValueAsString(toDTO(savedOrder));
                 OutboxEvent outboxEvent = OutboxEvent.builder()
                         .aggregateType("Order")
                         .aggregateId(savedOrder.getOrderId())
                         .eventType("OrderCreated")
-                        .topic(KafkaTopics.ORDERS_INBOUND)
+                        .topic("orders.inbound")
                         .kafkaKey(savedOrder.getOrderId())
                         .payload(payload)
                         .build();
