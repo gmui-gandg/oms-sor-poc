@@ -1,0 +1,127 @@
+{
+    "annotations": {
+        "list": []
+    },
+    "editable": true,
+    "gnetId": null,
+    "graphTooltip": 0,
+    "id": null,
+    "links": [],
+    "panels": [
+        {
+            "datasource": "Prometheus",
+            "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 0,
+                "y": 0
+            },
+            "id": 1,
+            "title": "Publish latency (ms, avg over 5m)",
+            "type": "stat",
+            "targets": [
+                {
+                    "expr": "(rate(oms_ingest_outbox_publish_latency_seconds_sum[5m]) / rate(oms_ingest_outbox_publish_latency_seconds_count[5m])) * 1000",
+                    "legendFormat": "avg ms",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "datasource": "Prometheus",
+            "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 12,
+                "y": 0
+            },
+            "id": 2,
+            "title": "Claim latency (ms, avg over 5m)",
+            "type": "stat",
+            "targets": [
+                {
+                    "expr": "(rate(oms_ingest_outbox_claim_latency_seconds_sum[5m]) / rate(oms_ingest_outbox_claim_latency_seconds_count[5m])) * 1000",
+                    "legendFormat": "avg ms",
+                    "refId": "A"
+                }
+            ]
+        },
+        {
+            "datasource": "Prometheus",
+            "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 0,
+                "y": 6
+            },
+            "id": 3,
+            "title": "Lock contention (rate per 5m)",
+            "type": "graph",
+            "targets": [
+                {
+                    "expr": "increase(oms_ingest_outbox_lock_contention_total[5m])",
+                    "refId": "A",
+                    "legendFormat": "contention"
+                }
+            ]
+        },
+        {
+            "datasource": "Prometheus",
+            "fieldConfig": {
+                "defaults": {},
+                "overrides": []
+            },
+            "gridPos": {
+                "h": 6,
+                "w": 12,
+                "x": 12,
+                "y": 6
+            },
+            "id": 4,
+            "title": "Published / Failed rate (per 5m)",
+            "type": "graph",
+            "targets": [
+                {
+                    "expr": "increase(oms_ingest_outbox_published_total[5m])",
+                    "refId": "A",
+                    "legendFormat": "published"
+                },
+                {
+                    "expr": "increase(oms_ingest_outbox_failed_total[5m])",
+                    "refId": "B",
+                    "legendFormat": "failed"
+                }
+            ]
+        }
+    ],
+    "schemaVersion": 27,
+    "style": "dark",
+    "tags": [
+        "outbox",
+        "oms-ingest"
+    ],
+    "templating": {
+        "list": []
+    },
+    "time": {
+        "from": "now-1h",
+        "to": "now"
+    },
+    "timepicker": {},
+    "timezone": "browser",
+    "title": "OMS Outbox Metrics",
+    "uid": "oms-outbox",
+    "version": 1
+}

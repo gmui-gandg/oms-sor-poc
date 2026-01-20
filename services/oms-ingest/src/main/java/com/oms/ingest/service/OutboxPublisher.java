@@ -4,7 +4,7 @@ import java.sql.Connection;
 import java.sql.Statement;
 import java.time.Instant;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import javax.sql.DataSource;
 
@@ -13,9 +13,7 @@ import org.postgresql.PGNotification;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.event.EventListener;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.SendResult;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +22,7 @@ import com.oms.ingest.repository.OutboxRepository;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -96,46 +95,61 @@ public class OutboxPublisher {
 
     @Transactional
     public void publishPendingEvents() {
-        List<OutboxEvent> events = outboxRepository.findUnpublishedEvents(
-                PageRequest.of(0, batchSize));
+        Timer claimTimer = meterRegistry.timer("oms.ingest.outbox.claim.latency");
+        Timer publishTimer = meterRegistry.timer("oms.ingest.outbox.publish.latency");
+
+        long claimStart = System.nanoTime();
+        List<OutboxEvent> events = outboxRepository.claimUnpublishedEvents(batchSize);
+        long claimDuration = System.nanoTime() - claimStart;
+        claimTimer.record(claimDuration, TimeUnit.NANOSECONDS);
 
         if (events.isEmpty()) {
+            long remaining = outboxRepository.countUnpublished();
+            if (remaining > 0) {
+                Counter.builder("oms.ingest.outbox.lock_contention")
+                        .description("Number of times claiming was skipped due to lock contention")
+                        .register(meterRegistry)
+                        .increment();
+            }
             return;
         }
 
-        log.debug("Publishing {} outbox events", events.size());
+        log.debug("Claimed and publishing {} outbox events", events.size());
 
         for (OutboxEvent event : events) {
             try {
-                CompletableFuture<SendResult<String, String>> future = kafkaTemplate.send(
+                long start = System.nanoTime();
+                kafkaTemplate.send(
                         event.getTopic(),
                         event.getKafkaKey() != null ? event.getKafkaKey().toString() : null,
-                        event.getPayload());
+                        event.getPayload()).get();
+                long duration = System.nanoTime() - start;
+                publishTimer.record(duration, TimeUnit.NANOSECONDS);
 
-                future.thenAccept(result -> {
-                    // Mark as published
-                    outboxRepository.markAsPublished(event.getId(), Instant.now());
-                    log.debug("Published event {} to topic {}", event.getId(), event.getTopic());
+                outboxRepository.markAsPublished(event.getId(), Instant.now());
+                log.debug("Published event {} to topic {}", event.getId(), event.getTopic());
 
-                    // Metrics
-                    Counter.builder("oms.ingest.outbox.published")
-                            .tag("topic", event.getTopic())
+                Counter.builder("oms.ingest.outbox.published")
+                        .tag("topic", event.getTopic())
+                        .register(meterRegistry)
+                        .increment();
+
+                if (events.size() < batchSize && outboxRepository.countUnpublished() > 0) {
+                    Counter.builder("oms.ingest.outbox.lock_contention")
+                            .description("Partial batch due to locked rows")
                             .register(meterRegistry)
                             .increment();
-
-                }).exceptionally(ex -> {
-                    log.error("Failed to publish event {}: {}", event.getId(), ex.getMessage());
-
-                    Counter.builder("oms.ingest.outbox.failed")
-                            .tag("topic", event.getTopic())
-                            .register(meterRegistry)
-                            .increment();
-
-                    return null;
-                });
+                }
 
             } catch (Exception e) {
-                log.error("Error publishing event {}", event.getId(), e);
+                log.error("Failed to publish event {}: {}", event.getId(), e.getMessage());
+
+                Counter.builder("oms.ingest.outbox.failed")
+                        .tag("topic", event.getTopic())
+                        .register(meterRegistry)
+                        .increment();
+
+                // continue; the row remains unpublished and will be retried later
             }
         }
     }
